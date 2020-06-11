@@ -73,3 +73,14 @@ services:
       bridge:
         aliases:
           - taskmanager
+  
+  producer:
+    build: eventproc
+    environment:
+      INPUT_FILE: "/data/events.json"
+    depends_on:
+      - kafka
+    networks:
+      bridge:
+        aliases:
+          - producer
