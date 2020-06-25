@@ -5,10 +5,10 @@
 
     <groupId>com.akolar</groupId>
     <artifactId>eventproc</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>Event Processing Producer</name>
+    <name>Event Processing</name>
     <description></description>
     <url></url>
 
@@ -66,40 +66,17 @@
             <version>1.7.25</version>
         </dependency>
 
-
-        <!--======SPARK PROJECT======-->
-        <!--<dependency>-->
-        <!--    <groupId>org.apache.spark</groupId>-->
-        <!--    <artifactId>spark-core_${scala.compat.version}</artifactId>-->
-        <!--    <version>${spark.version}</version>-->
-        <!--    <scope>provided</scope>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-        <!--    <groupId>org.apache.spark</groupId>-->
-        <!--    <artifactId>spark-sql_${scala.compat.version}</artifactId>-->
-        <!--    <version>${spark.version}</version>-->
-        <!--    <scope>provided</scope>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-        <!--    <groupId>org.apache.spark</groupId>-->
-        <!--    <artifactId>spark-mllib_${scala.compat.version}</artifactId>-->
-        <!--    <version>${spark.version}</version>-->
-        <!--    <scope>provided</scope>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-        <!--    <groupId>org.apache.spark</groupId>-->
-        <!--    <artifactId>spark-hive_${scala.compat.version}</artifactId>-->
-        <!--    <version>${spark.version}</version>-->
-        <!--    <scope>provided</scope>-->
-        <!--</dependency>-->
-
-
-        <!--======TYPESAFE CONFIG======-->
-        <!--<dependency>-->
-        <!--    <groupId>com.typesafe</groupId>-->
-        <!--    <artifactId>config</artifactId>-->
-        <!--    <version>1.4.0</version>-->
-        <!--</dependency>-->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-scala_2.12</artifactId>
+            <version>1.10.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-kafka_2.11</artifactId>
+            <version>1.10.0</version>
+        </dependency>
 
         <!--======Test======-->
         <dependency>
