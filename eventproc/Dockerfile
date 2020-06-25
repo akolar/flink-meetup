@@ -18,7 +18,7 @@ WORKDIR /source
 ADD pom.xml /source/pom.xml
 RUN mvn install -q
 ADD src /source/src
-RUN mvn package -q
+RUN mvn clean package -q
 
 # App
 WORKDIR /
