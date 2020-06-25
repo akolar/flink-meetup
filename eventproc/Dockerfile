@@ -22,7 +22,8 @@ RUN mvn package -q
 
 # App
 WORKDIR /
-RUN cp /source/target/eventproc-1.0-jar-with-dependencies.jar producer.jar
+RUN cp /source/target/producer-jar-with-dependencies.jar producer.jar
+RUN cp /source/target/consumer-jar-with-dependencies.jar consumer.jar
 RUN rm -rf /source
 
-CMD ["java", "-jar", "producer.jar"]
+CMD ["sh", "-c", "java -jar ${MODE}.jar"]

@@ -76,8 +76,9 @@ services:
   
   producer:
     build: eventproc
-    image: producer:latest
+    image: eventproc:latest
     environment:
+      MODE: "producer"
       INPUT_FILE: "/data/events.json"
       KAFKA_PRODUCER_ITERATIONS: 10
     depends_on:
