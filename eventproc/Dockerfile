@@ -1,8 +1,5 @@
 FROM openjdk:14-alpine
 
-# Sample data
-ADD data/events1k.json /data/events.json
-
 # Maven
 RUN apk add --update curl tar gzip \
     && rm -rf /var/cache/apk/*
@@ -11,6 +8,9 @@ WORKDIR /usr/local/lib/maven
 RUN curl -s https://downloads.apache.org/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz -o maven.tar.gz
 RUN tar xvzf maven.tar.gz --strip=1 >> /dev/null
 ENV PATH="/usr/local/lib/maven/bin:${PATH}"
+
+# Sample data
+ADD data/events1k.json /data/events.json
 
 # Compile
 RUN mkdir -p /source

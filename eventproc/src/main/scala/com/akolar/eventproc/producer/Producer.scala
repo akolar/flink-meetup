@@ -46,6 +46,7 @@ object Producer {
     val md = MessageDigest.getInstance("MD5")
     val digest = md.digest(s.getBytes)
     val bigInt = new BigInteger(1,digest)
-    bigInt.toString(16)
+    val hash = bigInt.toString(16)
+    f"""{"hash": "$hash"}"""
   }
 }
