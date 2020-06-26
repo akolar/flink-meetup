@@ -23,23 +23,29 @@ object MeetupJob {
       -> filter by country in EU -> group by city -> count
      */
 
-    val input = stream.map {v => {
-      val venue = v.get("venue")
-      val country = venue.get("country").asText.toLowerCase
-      val city = venue.get("city").asText
-      val lat = venue.get("lat").asDouble
-      val lon = venue.get("lon").asDouble
-      val evTime = v.get("time").asLong
+    val input = stream
+        .filter {_.has("venue")}
+        .map {v => {
+          val venue = v.get("venue")
+          val country = venue.get("country").asText.toLowerCase
+          val city = venue.get("city").asText
+          val lat = venue.get("lat").asDouble
+          val lon = venue.get("lon").asDouble
+          val evTime = v.get("time").asLong
 
-      new Event(country, city, new Location(lat, lon), System.currentTimeMillis, evTime)
-    }}
+          new Event(country, city, new Location(lat, lon), System.currentTimeMillis, evTime)
+        }}
 
     input.filter {_.country == "de"}
-        .filter {_.country == "Munich"}
-        .map {v => ((v.loc.lat / 0.009).toInt, (v.loc.lon / 0.0134).toInt, 1)}
-        .keyBy(0).keyBy(1)
-        .sum(2)
-        .print()
+      .filter {_.country == "Munich"}
+      .map {v => {
+            val latBucket = (v.loc.lat / 0.009).toInt
+            val lonBucket = (v.loc.lon / 0.0134).toInt
+            (f"$latBucket,$lonBucket", 1)
+        }}
+      .keyBy(0)
+      .sum(1)
+      .print()
 
     input.filter { v => Country.inEurope(v.country) }
         .map(v => (v.city, 1))

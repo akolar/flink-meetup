@@ -80,7 +80,7 @@ services:
     environment:
       MODE: "producer"
       INPUT_FILE: "/data/events.json"
-      KAFKA_PRODUCER_ITERATIONS: 1
+      KAFKA_PRODUCER_ITERATIONS: 10
     depends_on:
       - kafka
     networks:
