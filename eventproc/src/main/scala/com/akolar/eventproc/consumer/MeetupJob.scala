@@ -4,9 +4,14 @@ import java.util.Properties
 
 import com.akolar.eventproc.{Config, Country}
 import com.akolar.eventproc.consumer.MeetupEvent.{Event, Location}
+import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.CsvSchema
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
+import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows
+import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer.Semantic
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer, KafkaSerializationSchema}
 import org.apache.flink.streaming.util.serialization.JSONKeyValueDeserializationSchema
 
 object MeetupJob {
@@ -17,18 +22,22 @@ object MeetupJob {
     env.enableCheckpointing(10000L)
 
     val stream = env.addSource(getConsumer())
-    /* TODO:
-     flatmap: start time, event time, country, city, lat, lon
-      -> filter by country=de -> filter by city=munich -> split by lat,lon -> count
-      -> filter by country in EU -> group by city -> count
-     */
 
     val input = stream
-        .filter {_.has("venue")}
-        .map {v => {
+      .map {v => v.get("value")}
+      .filter {_.has("venue")}
+      .filter {v => {
+        val venue = v.get("venue")
+        v.has("time") &&
+          venue.has("country") &&
+          venue.has("city") &&
+          venue.has("lat") &&
+          venue.has("lon")
+      }}
+      .map {v => {
           val venue = v.get("venue")
-          val country = venue.get("country").asText.toLowerCase
-          val city = venue.get("city").asText
+          val country = venue.get("country").asText.toUpperCase
+          val city = venue.get("city").asText.toLowerCase
           val lat = venue.get("lat").asDouble
           val lon = venue.get("lon").asDouble
           val evTime = v.get("time").asLong
@@ -36,8 +45,9 @@ object MeetupJob {
           new Event(country, city, new Location(lat, lon), System.currentTimeMillis, evTime)
         }}
 
-    input.filter {_.country == "de"}
-      .filter {_.country == "Munich"}
+    input
+      .filter {_.country == "DE"}
+      .filter {v => {v.city == "munich" || v.city == "münchen" || v.city == "muenchen"}}
       .map {v => {
             val latBucket = (v.loc.lat / 0.009).toInt
             val lonBucket = (v.loc.lon / 0.0134).toInt
@@ -45,13 +55,13 @@ object MeetupJob {
         }}
       .keyBy(0)
       .sum(1)
-      .print()
+      .addSink(getProducer(Config.KafkaMunichHotspotsTopic))
 
     input.filter { v => Country.inEurope(v.country) }
-        .map(v => (v.city, 1))
+        .map {v => (v.city, 1)}
         .keyBy(0)
         .sum(1)
-        .print()
+        .addSink(getProducer(Config.KafkaTopCitiesTopic))
 
     env.execute("meetup pipeline")
   }
@@ -68,5 +78,13 @@ object MeetupJob {
     consumer.setStartFromEarliest()
 
     consumer
+  }
+
+  def getProducer(topic: String): FlinkKafkaProducer[(String, Int)] = {
+    val properties = new Properties
+    properties.put("bootstrap.servers", Config.KafkaURI)
+    properties.put("transaction.max.timeout.ms", "900000")
+    properties.put("transaction.timeout.ms", "600000")
+    new FlinkKafkaProducer[(String, Int)](topic, new AggregateSerializer(topic), properties, Semantic.AT_LEAST_ONCE)
   }
 }
