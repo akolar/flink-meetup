@@ -7,8 +7,10 @@ import com.akolar.eventproc.consumer.MeetupEvent.{Event, Location}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.CsvSchema
+import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows
+import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, TumblingProcessingTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer.Semantic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer, KafkaSerializationSchema}
@@ -20,6 +22,7 @@ object MeetupJob {
   def main(args: Array[String]): Unit = {
     val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
     env.enableCheckpointing(10000L)
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
     val stream = env.addSource(getConsumer())
 
@@ -42,8 +45,11 @@ object MeetupJob {
           val lon = venue.get("lon").asDouble
           val evTime = v.get("time").asLong
 
-          new Event(country, city, new Location(lat, lon), System.currentTimeMillis, evTime)
+          new Event(country, city, new Location(lat, lon), evTime)
         }}
+        .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor[Event](Time.hours(1)){
+          override def extractTimestamp(t: Event): Long = { t.EventTime }
+        })
 
     input
       .filter {_.country == "DE"}
@@ -60,6 +66,7 @@ object MeetupJob {
     input.filter { v => Country.inEurope(v.country) }
         .map {v => (v.city, 1)}
         .keyBy(0)
+        .window(TumblingEventTimeWindows.of(Time.days(30)))
         .sum(1)
         .addSink(getProducer(Config.KafkaTopCitiesTopic))
 

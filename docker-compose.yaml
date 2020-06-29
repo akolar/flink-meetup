@@ -87,3 +87,16 @@ services:
       bridge:
         aliases:
           - producer
+  
+  consumer:
+    build: eventproc
+    image: eventproc:latest
+    environment:
+      MODE: "consumer"
+    depends_on:
+      - kafka
+      - taskmanager
+    networks:
+      bridge:
+        aliases:
+          - consumer
