@@ -4,16 +4,17 @@ import java.util.Properties
 
 import com.akolar.eventproc.{Config, Country}
 import com.akolar.eventproc.consumer.MeetupEvent.{Event, Location}
-import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.CsvSchema
+import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
-import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, TumblingProcessingTimeWindows}
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer.Semantic
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer, KafkaSerializationSchema}
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 import org.apache.flink.streaming.util.serialization.JSONKeyValueDeserializationSchema
 
 object MeetupJob {
@@ -22,9 +23,10 @@ object MeetupJob {
   def main(args: Array[String]): Unit = {
     val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
     env.enableCheckpointing(10000L)
+    env.setParallelism(Config.FlinkParallelism)
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
-    val stream = env.addSource(getConsumer())
+    val stream = env.addSource(getConsumer)
 
     val input = stream
       .map { v => v.get("value") }
@@ -67,15 +69,15 @@ object MeetupJob {
       }
       .keyBy(0)
       .sum(1)
-      .addSink(getProducer(Config.KafkaMunichHotspotsTopic))
+      .addSink(getKVProducer(Config.KafkaMunichHotspotsTopic))
 
     input
-      .filter { v => Country.inEurope(v.country) }
-      .map { v => (v.city, 1) }
+      .map { v => (Country.continent.getOrElse(v.country, Continent.Unknown), v.city, 1) }
+      .filter { _._1 == Continent.Europe}
       .keyBy(0)
-      .window(TumblingEventTimeWindows.of(Time.days(30)))
-      .sum(1)
-      .addSink(getProducer(Config.KafkaTopCitiesTopic))
+      .timeWindow(Time.days(1))
+      .process(new TopKWindow(10))
+      .addSink(getRankProducer(Config.KafkaTopCitiesTopic))
 
     env.execute("meetup pipeline")
   }
@@ -85,18 +87,29 @@ object MeetupJob {
     properties.put("bootstrap.servers", Config.KafkaURI)
     properties.setProperty("group.id", Config.KafkaConsumerGroup)
 
-    val consumer =
-      new FlinkKafkaConsumer(Config.KafkaMeetupEventsTopic, new JSONKeyValueDeserializationSchema(false), properties)
+    val consumer = new FlinkKafkaConsumer[ObjectNode](
+      Config.KafkaMeetupEventsTopic,
+      new JSONKeyValueDeserializationSchema(false),
+      properties)
+
     consumer.setStartFromEarliest()
 
     consumer
   }
 
-  def getProducer(topic: String): FlinkKafkaProducer[(String, Int)] = {
+  def getKVProducer(topic: String): FlinkKafkaProducer[(String, Int)] = {
+    new FlinkKafkaProducer[(String, Int)](topic, new AggregateSerializer(topic), getProducerProperties, Semantic.AT_LEAST_ONCE)
+  }
+
+  def getRankProducer(topic: String): FlinkKafkaProducer[(String, Int, String, Int)] = {
+    new FlinkKafkaProducer[(String, Int, String, Int)](topic, new RankSerializer(topic), getProducerProperties, Semantic.AT_LEAST_ONCE)
+  }
+
+  def getProducerProperties(): Properties = {
     val properties = new Properties
     properties.put("bootstrap.servers", Config.KafkaURI)
     properties.put("transaction.max.timeout.ms", "900000")
     properties.put("transaction.timeout.ms", "600000")
-    new FlinkKafkaProducer[(String, Int)](topic, new AggregateSerializer(topic), properties, Semantic.AT_LEAST_ONCE)
+    properties
   }
 }

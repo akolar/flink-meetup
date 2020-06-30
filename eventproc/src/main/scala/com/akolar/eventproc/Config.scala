@@ -10,6 +10,7 @@ object Config {
   val KafkaMunichHotspotsTopic = sys.env.getOrElse("KAFKA_MUNICH_HOTSPOTS_TOPIC", "meetup_munich_hotspots")
 
   val ProducerIterations = math.max(1, sys.env.getOrElse("KAFKA_PRODUCER_ITERATIONS", "3").toInt)
-
   val InputFile = sys.env.getOrElse("INPUT_FILE", "/data/meetup.json")
+
+  val FlinkParallelism = sys.env.getOrElse("FLINK_PARALLEL", "2").toInt
 }
