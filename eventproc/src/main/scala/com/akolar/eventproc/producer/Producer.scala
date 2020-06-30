@@ -43,10 +43,10 @@ object Producer {
   }
 
   def md5sum(s: String): String = {
-    val md = MessageDigest.getInstance("MD5")
+    val md     = MessageDigest.getInstance("MD5")
     val digest = md.digest(s.getBytes)
-    val bigInt = new BigInteger(1,digest)
-    val hash = bigInt.toString(16)
+    val bigInt = new BigInteger(1, digest)
+    val hash   = bigInt.toString(16)
     f"""{"hash": "$hash"}"""
   }
 }
