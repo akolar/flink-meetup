@@ -73,7 +73,7 @@ object MeetupJob {
 
     input
       .map { v => (Country.continent.getOrElse(v.country, Continent.Unknown), v.city, 1) }
-      .filter { _._1 == Continent.Europe}
+      .filter { _._1 == Continent.Europe }
       .keyBy(0)
       .timeWindow(Time.days(1))
       .process(new TopKWindow(10))
@@ -90,7 +90,8 @@ object MeetupJob {
     val consumer = new FlinkKafkaConsumer[ObjectNode](
       Config.KafkaMeetupEventsTopic,
       new JSONKeyValueDeserializationSchema(false),
-      properties)
+      properties
+    )
 
     consumer.setStartFromEarliest()
 
@@ -98,11 +99,21 @@ object MeetupJob {
   }
 
   def getKVProducer(topic: String): FlinkKafkaProducer[(String, Int)] = {
-    new FlinkKafkaProducer[(String, Int)](topic, new AggregateSerializer(topic), getProducerProperties, Semantic.AT_LEAST_ONCE)
+    new FlinkKafkaProducer[(String, Int)](
+      topic,
+      new AggregateSerializer(topic),
+      getProducerProperties,
+      Semantic.AT_LEAST_ONCE
+    )
   }
 
   def getRankProducer(topic: String): FlinkKafkaProducer[(String, Int, String, Int)] = {
-    new FlinkKafkaProducer[(String, Int, String, Int)](topic, new RankSerializer(topic), getProducerProperties, Semantic.AT_LEAST_ONCE)
+    new FlinkKafkaProducer[(String, Int, String, Int)](
+      topic,
+      new RankSerializer(topic),
+      getProducerProperties,
+      Semantic.AT_LEAST_ONCE
+    )
   }
 
   def getProducerProperties(): Properties = {
