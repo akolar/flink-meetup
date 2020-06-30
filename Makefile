@@ -6,3 +6,6 @@ down:
 
 logs:
 	docker-compose logs -f producer consumer
+
+fmt:
+	scalafmt ./eventproc/src
