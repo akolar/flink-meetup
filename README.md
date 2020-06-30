@@ -43,7 +43,7 @@ meetup.com.
 
 ## Pipeline
 
-![pipeline](https://github.com/akolar/flink-meetup/blob/master/pipeline.jpg?raw=true)
+![pipeline](https://raw.githubusercontent.com/akolar/flink-meetup/master/pipeline.png)
 
 At the early stages of the processing pipeline, data is first filtered (based
 on the missing fields) and converted to the appropriate form for further
