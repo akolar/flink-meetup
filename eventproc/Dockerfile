@@ -13,7 +13,7 @@ ENV PATH="/usr/local/lib/maven/bin:${PATH}"
 # Data
 RUN mkdir /data
 WORKDIR /data
-RUN curl -s http://akolar-fs.s3.eu-central-1.amazonaws.com/tum/eventproc/events.json.xz -o events.json.xz
+RUN curl -s http://akolar-fs.s3.eu-central-1.amazonaws.com/kafka/events-gen.json.xz -o events.json.xz
 RUN xz -d -T0 events.json.xz
 
 # Compile
